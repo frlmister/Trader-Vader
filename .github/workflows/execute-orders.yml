@@ -1,0 +1,38 @@
+name: Execute orders
+
+on:
+  push:
+    paths:
+      - 'orders/*.json'
+
+permissions:
+  contents: write
+
+jobs:
+  execute:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Submit orders to Alpaca
+        env:
+          ALPACA_API_KEY: ${{ secrets.ALPACA_API_KEY }}
+          ALPACA_API_SECRET: ${{ secrets.ALPACA_API_SECRET }}
+        run: python3 execute_orders.py
+
+      - name: Commit result files
+        if: always()
+        run: |
+          if [ -z "$(git status --porcelain orders/results)" ]; then
+            echo "No new result files to commit."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add orders/results
+          git commit -m "chore: record order results [skip ci]"
+          git push
